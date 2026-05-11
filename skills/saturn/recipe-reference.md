@@ -1,260 +1,274 @@
 # Saturn Cloud Recipe Reference
 
+> **Auto-generated** from `saturn-api` Pydantic models.
+> Run `python scripts/generate_recipe_reference.py > skills/saturn/recipe-reference.md` to refresh.
+> Hand edits to the structural tables will be overwritten — edit the templates and field descriptions in `scripts/generate_recipe_reference.py` instead.
+
 Complete schema reference for Saturn Cloud resource recipes.
 
 ## Top-Level Structure
 
-```json
-{
-  "type": "<resource_type>",
-  "spec": { ... }
-}
+```yaml
+schema_version: "2025.10.01"   # optional; included in API responses
+type: workspace                # workspace | job | deployment
+spec:
+  name: my-resource
+  ...
+state:                         # response-only; omit when applying
+  id: ...
+  status: stopped
 ```
 
+
+## Common Spec Fields
+
 | Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `type` | string | Yes | `"workspace"`, `"job"`, or `"deployment"` |
-| `spec` | object | Yes | Resource configuration (see below) |
-| `state` | object | Read-only | Present when reading resources; contains `id`, `status`, `url`, etc. |
+|---|---|---|---|
+| `name` | string | Yes | Resource name (unique per owner) |
+| `owner` | string | No | Owner reference (e.g. `"primary-tenant/demo"`) |
+| `description` | string | No | Human-readable description |
+| `tags` | object (string → string) | No | Arbitrary labels |
+| `image` | string | Yes | Image reference, e.g. `"saturncloud/saturn-python:2025.05.01"`. **Single string, not an object.** |
+| `instance_type` | string | Yes | Full instance descriptor (e.g. `"nebius-cpu-d3-4vcpu-16gb"`). Use `saturn_list_instance_types` to enumerate. |
+| `environment_variables` | object (string → string) | No | Plain env vars. **Dict shape, not array.** |
+| `working_directory` | string | No | Working directory inside the container |
+| `extra_packages` | [ExtraPackagesRecipe](#extrapackagesrecipe) | No | Package install instructions |
+| `start_script` | string | No | Shell script run on startup |
+| `token_scope` | string | No | Saturn token scope; usually auto-set |
+| `dask_cluster` | [DaskClusterAttachment](#daskclusterattachment) | No | Attached Dask cluster |
+| `git_repositories` | array of [ExternalRepoAttachmentRecipe](#externalrepoattachmentrecipe) | No | Git repos to clone |
+| `secrets` | array of [SecretAttachmentRecipe](#secretattachmentrecipe) | No | Secret attachments. **Separate from `environment_variables`.** |
+| `shared_folders` | array of [SharedFolderAttachmentRecipe](#sharedfolderattachmentrecipe) | No | Shared-folder mounts |
+| `start_dind` | bool | No | Enable Docker-in-Docker |
+| `status` | enum (`"stopped"`, `"running"`) | No | Desired state |
+| `use_spot_instance` | bool | No | Use spot/preemptible instance |
 
-## Spec Fields
+## Workspace-Only Fields
 
-### Common Fields (all resource types)
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `ide` | enum (`"jupyter"`, `"rstudio"`) | No | IDE |
+| `disk_space` | string | No | Persistent disk size (e.g. `"64Gi"`) |
+| `auto_shutoff` | enum (`"1 hour"`, `"6 hours"`, `"24 hours"`, `"3 days"`, `"7 days"`, `"Never"`) | No | Auto-shutdown timeout |
+| `start_ssh` | bool | No | Enable SSH access |
+| `routes` | array of [WorkspaceRouteRecipe](#workspacerouterecipe) | No | HTTP route definitions |
+| `viewers` | array of [ViewerRecipe](#viewerrecipe) | No | Embedded viewer configurations |
+| `self_destruct` | bool | No | Delete on stop |
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `name` | string | required | Resource name (unique per owner) |
-| `owner` | string | current user | Owner username |
-| `description` | string | `""` | Human-readable description |
-| `image` | object | required | Docker image (see Image below) |
-| `instance_type` | string | required | Compute instance size |
-| `extra_packages` | object | `null` | Additional packages to install (see Extra Packages) |
-| `start_script` | string | `""` | Shell script to run on startup |
-| `environment_variables` | array | `[]` | Environment variables / secrets (see Environment Variables) |
-| `git_repositories` | array | `[]` | Git repos to clone (see Git Repositories) |
-| `shared_folders` | array | `[]` | Shared folder mounts |
-| `dask_cluster` | object | `null` | Dask cluster config (see Dask Cluster) |
-| `auto_shutoff` | string | `"1 hour"` | Auto-shutdown timeout |
-| `working_directory` | string | `"/home/jovyan/workspace"` | Working directory |
+## Job-Only Fields
 
-### Workspace-Only Fields
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `command` | string | Yes | Shell command to execute |
+| `scale` | int | No | Number of replicas (deployment) or parallel runs (job) |
+| `schedule` | string | No | Cron expression |
+| `concurrency_policy` | enum (`"Allow"`, `"Forbid"`, `"Replace"`) | No | Concurrency policy for scheduled jobs |
+| `retries` | int | No | Number of retries on failure |
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `ide` | string | `"jupyter"` | IDE: `"jupyter"`, `"vscode"`, `"rstudio"` |
-| `disk_space` | string | `"16Gi"` | Persistent disk size: `"16Gi"`, `"64Gi"`, `"256Gi"`, `"512Gi"`, `"1Ti"` |
-| `start_dind` | bool | `false` | Enable Docker-in-Docker |
-| `start_ssh` | bool | `false` | Enable SSH access |
+## Deployment-Only Fields
 
-### Job-Only Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `command` | string | required | Shell command to execute |
-| `start_dind` | bool | `false` | Enable Docker-in-Docker |
-| `backoff_limit` | int | `0` | Number of retries on failure |
-| `concurrency_policy` | string | `"Forbid"` | `"Allow"`, `"Forbid"`, `"Replace"` — for scheduled jobs |
-
-### Deployment-Only Fields
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `command` | string | required | Shell command to run the service |
-| `routes` | array | `[]` | HTTP route definitions (see Routes) |
-| `viewers` | array | `[]` | Embedded viewer configurations |
-| `replicas` | int | `1` | Number of replicas |
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `command` | string | Yes | Shell command to execute |
+| `scale` | int | No | Number of replicas (deployment) or parallel runs (job) |
+| `start_ssh` | bool | No | Enable SSH access |
+| `routes` | array of [DeploymentRouteRecipe](#deploymentrouterecipe) | No | HTTP route definitions |
+| `viewers` | array of [ViewerRecipe](#viewerrecipe) | No | Embedded viewer configurations |
 
 ## Nested Objects
 
-### Image
+### ExtraPackagesRecipe
 
-```json
-{
-  "name": "saturncloud/saturn-python",
-  "version": "2024.01.01"
-}
-```
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `pip` | [ExtraPackagesRecipePip](#extrapackagesrecipepip) | No |  |
+| `conda` | [ExtraPackagesRecipeConda](#extrapackagesrecipeconda) | No |  |
+| `apt` | [ExtraPackagesRecipeApt](#extrapackagesrecipeapt) | No |  |
+| `cran` | [ExtraPackagesRecipeApt](#extrapackagesrecipeapt) | No |  |
+| `remotes` | [ExtraPackagesRecipeApt](#extrapackagesrecipeapt) | No |  |
+| `bioconductor` | [ExtraPackagesRecipeApt](#extrapackagesrecipeapt) | No |  |
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `name` | string | Image repository name |
-| `version` | string | Image tag/version |
+### ExtraPackagesRecipePip
 
-### Extra Packages
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `install` | string | No | Space-separated package list |
+| `requirements_txt` | string | No | Path to requirements file |
 
-```json
-{
-  "pip": "package1 package2",
-  "conda": "package1 package2",
-  "apt": "package1 package2"
-}
-```
+### ExtraPackagesRecipeConda
 
-All fields are optional space-separated package strings.
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `install` | string | No | Space-separated package list |
+| `environment_yml` | string | No | Path to environment YAML |
+| `use_mamba` | bool | No | Use mamba instead of conda |
 
-### Environment Variables
+### ExtraPackagesRecipeApt
 
-```json
-[
-  {"variable": "KEY", "value": "plain-text-value"},
-  {"variable": "KEY", "secret_name": "saturn-secret-name"}
-]
-```
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `install` | string | No | Space-separated package list |
 
-Use `value` for non-sensitive values. Use `secret_name` to reference a Saturn Cloud secret.
+### ExternalRepoAttachmentRecipe
 
-### Git Repositories
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `url` | string | Yes | Git clone URL (SSH or HTTPS) |
+| `path` | string | No | Mount/clone path inside container |
+| `on_restart` | enum (`"preserve changes"`, `"reclone"`) | No | Restart policy for the working tree. Server normalizes to `"reclone"` for jobs and deployments. |
+| `reference` | string | No | Branch, tag, or commit |
+| `reference_type` | enum (`"branch"`, `"commit"`, `"tag"`) | No | What kind of reference |
+| `public` | bool | No | Public repo (no auth required) |
 
-```json
-[
-  {
-    "url": "https://github.com/org/repo.git",
-    "path": "/home/jovyan/workspace/repo",
-    "reference": "main",
-    "reference_type": "branch",
-    "on_restart": "preserve changes"
-  }
-]
-```
+### SharedFolderAttachmentRecipe
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `url` | string | required | Git clone URL |
-| `path` | string | auto | Clone destination path |
-| `reference` | string | `"main"` | Branch, tag, or commit |
-| `reference_type` | string | `"branch"` | `"branch"`, `"tag"`, `"commit"` |
-| `on_restart` | string | `"preserve changes"` | `"preserve changes"`, `"reset to reference"` |
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `owner` | string | No | Owner reference (e.g. `"primary-tenant/demo"`) |
+| `name` | string | Yes | Resource name (unique per owner) |
+| `path` | string | No | Mount/clone path inside container |
 
-### Dask Cluster
+### SecretAttachmentRecipe
 
-```json
-{
-  "num_workers": 3,
-  "instance_type": "xlarge",
-  "scheduler_instance_type": "large",
-  "use_spot_instances": false
-}
-```
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `location` | string | Yes | Env-var name (or file path if `attachment_type: file`) |
+| `attachment_type` | enum (`"environment_variable"`, `"file"`) | Yes | How the secret is exposed |
+| `description` | string | No | Human-readable description |
+| `owner` | string | No | Owner reference (e.g. `"primary-tenant/demo"`) |
+| `name` | string | No | Resource name (unique per owner) |
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `num_workers` | int | required | Number of Dask workers |
-| `instance_type` | string | required | Worker instance type |
-| `scheduler_instance_type` | string | same as workers | Scheduler instance type |
-| `use_spot_instances` | bool | `false` | Use spot/preemptible instances for workers |
-| `num_processes` | int | `1` | Processes per worker |
-| `num_threads` | int | auto | Threads per process |
+### DaskClusterAttachment
 
-### Routes
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `num_workers` | int | Yes | Number of workers |
+| `scheduler` | [DaskClusterAttachmentScheduler](#daskclusterattachmentscheduler) | Yes | Scheduler config |
+| `worker` | [DaskClusterAttachmentWorker](#daskclusterattachmentworker) | Yes | Worker config |
+| `status` | enum (`"stopped"`, `"running"`) | No | Desired state |
 
-```json
-[
-  {
-    "container_port": 8000,
-    "visibility": "public",
-    "path_prefix": "/api"
-  }
-]
-```
+### DaskClusterAttachmentScheduler
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `container_port` | int | required | Port the service listens on |
-| `visibility` | string | `"org"` | `"public"`, `"org"`, `"owner"` |
-| `path_prefix` | string | `"/"` | URL path prefix |
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `instance_type` | string | Yes | Full instance descriptor (e.g. `"nebius-cpu-d3-4vcpu-16gb"`). Use `saturn_list_instance_types` to enumerate. |
+
+### DaskClusterAttachmentWorker
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `instance_type` | string | Yes | Full instance descriptor (e.g. `"nebius-cpu-d3-4vcpu-16gb"`). Use `saturn_list_instance_types` to enumerate. |
+| `num_processes` | int | No | Processes per worker |
+| `num_threads` | int | No | Threads per process |
+| `use_spot_instances` | bool | No | Use spot for workers (note: plural, vs `use_spot_instance` on spec) |
+
+### WorkspaceRouteRecipe
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `subdomain` | string | No | Custom subdomain |
+| `container_port` | int | Yes | Port the service listens on |
+| `visibility` | enum (`"org"`, `"owner"`) | No | Who can access the route |
+
+### DeploymentRouteRecipe
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `subdomain` | string | No | Custom subdomain |
+| `container_port` | int | Yes | Port the service listens on |
+| `visibility` | enum (`"unauthenticated"`, `"account"`, `"org"`, `"owner"`) | No | Who can access the route |
+
+### ViewerRecipe
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `identity` | string | Yes | Viewer identity |
+| `route` | string | No | Route reference |
 
 ## Example Recipes
 
 ### Workspace
 
-```json
-{
-  "type": "workspace",
-  "spec": {
-    "name": "my-workspace",
-    "image": {"name": "saturncloud/saturn-python", "version": "2024.01.01"},
-    "instance_type": "large",
-    "disk_space": "64Gi",
-    "ide": "jupyter",
-    "auto_shutoff": "1 hour",
-    "git_repositories": [
-      {
-        "url": "https://github.com/myorg/myrepo.git",
-        "path": "/home/jovyan/workspace/myrepo",
-        "reference": "main",
-        "reference_type": "branch",
-        "on_restart": "preserve changes"
-      }
-    ],
-    "extra_packages": {"pip": "pandas scikit-learn"},
-    "start_script": "cd /home/jovyan/workspace/myrepo && pip install -e ."
-  }
-}
+```yaml
+type: workspace
+spec:
+  name: cpu-interactive
+  owner: primary-tenant/demo
+  image: saturncloud/saturn-python:2025.05.01
+  instance_type: nebius-cpu-d3-4vcpu-16gb
+  ide: jupyter
+  disk_space: 300Gi
+  auto_shutoff: 6 hours
+  git_repositories:
+    - url: git@github.com:saturncloud/examples.git
+      path: /home/jovyan/workspace/examples
+      reference: main
+      reference_type: branch
+      on_restart: preserve changes
+  shared_folders:
+    - name: test-data
+      owner: primary-tenant/demo
+      path: /home/jovyan/shared/demo/test-data
 ```
 
 ### Job
 
-```json
-{
-  "type": "job",
-  "spec": {
-    "name": "nightly-etl",
-    "image": {"name": "saturncloud/saturn-python", "version": "2024.01.01"},
-    "instance_type": "xlarge",
-    "command": "python /home/jovyan/workspace/etl/run.py",
-    "auto_shutoff": "6 hours",
-    "git_repositories": [
-      {
-        "url": "https://github.com/myorg/etl-pipeline.git",
-        "path": "/home/jovyan/workspace/etl",
-        "reference": "main",
-        "reference_type": "branch"
-      }
-    ],
-    "environment_variables": [
-      {"variable": "DATABASE_URL", "secret_name": "database-url"}
-    ]
-  }
-}
+```yaml
+type: job
+spec:
+  name: nyc-taxi-ingest
+  owner: primary-tenant/demo
+  image: saturncloud/saturn-python:2025.05.01
+  instance_type: nebius-cpu-d3-4vcpu-16gb
+  command: cd examples/data-science-analystics/cpu-data-versioning && python ingest_taxi_dvc.py
+  extra_packages:
+    pip:
+      install: dvc>=3.67
+  environment_variables:
+    SHARED_STORAGE: /home/jovyan/shared/demo/test-data
+  git_repositories:
+    - url: git@github.com:saturncloud/examples.git
+      path: /home/jovyan/workspace/examples
+      reference: demo/saturn-data-pipeline
+      reference_type: branch
+      on_restart: reclone
+  shared_folders:
+    - name: test-data
+      owner: primary-tenant/demo
+      path: /home/jovyan/shared/demo/test-data
 ```
 
 ### Deployment
 
-```json
-{
-  "type": "deployment",
-  "spec": {
-    "name": "prediction-api",
-    "image": {"name": "saturncloud/saturn-python", "version": "2024.01.01"},
-    "instance_type": "xlarge",
-    "command": "uvicorn app:app --host 0.0.0.0 --port 8000",
-    "routes": [
-      {"container_port": 8000, "visibility": "public"}
-    ],
-    "replicas": 2,
-    "auto_shutoff": "never",
-    "extra_packages": {"pip": "fastapi uvicorn"},
-    "environment_variables": [
-      {"variable": "MODEL_PATH", "value": "/home/jovyan/workspace/model.pkl"}
-    ]
-  }
-}
+```yaml
+type: deployment
+spec:
+  name: prediction-api
+  owner: primary-tenant/demo
+  image: saturncloud/saturn-python:2025.05.01
+  instance_type: nebius-cpu-d3-4vcpu-16gb
+  command: python3 -m uvicorn serve:app --host 0.0.0.0 --port 8000
+  scale: 1
+  routes:
+    - container_port: 8000
+      visibility: org
+  environment_variables:
+    MODEL_PATH: /home/jovyan/shared/models/latest
 ```
 
-## State Object (read-only)
 
-When reading a resource, the recipe includes a `state` field:
+## Key Pitfalls
 
-```json
-{
-  "state": {
-    "id": "abc123",
-    "status": "running",
-    "url": "https://app.saturn.io/...",
-    "created_at": "2024-01-15T10:30:00Z",
-    "updated_at": "2024-01-15T12:00:00Z"
-  }
-}
-```
+- `image` is a **string**, not `{name, version}`.
+- `instance_type` is the **full descriptor**, not a size keyword (use `saturn_list_instance_types`).
+- `environment_variables` is a **dict**, not a list of `{variable, value}` objects.
+- `extra_packages.pip` is an **object** `{install, requirements_txt}`, not a space-separated string.
+- `secrets` is a **separate array**, not embedded in `environment_variables`.
+- `schema_version` is at the **top level** alongside `type`, not inside `spec`.
+- For **jobs**, the server normalizes `git_repositories[].on_restart` to `"reclone"`.
+- Deployment scaling is `scale`, not `replicas`.
+- IDE values are `"jupyter"` or `"rstudio"` only — VS Code is configured via image, not as an IDE value.
+- `command` runs via `exec`, **not a shell** — shell builtins like `cd`, `&&`, `||`, pipes, redirects, and env-var expansion will fail with `exec: cd: not found` (or similar). Use `working_directory` to set the cwd. If you genuinely need shell features, wrap with `bash -lc "..."`.
+- **Deployments must bind `0.0.0.0:8000`.** Saturn Cloud's deployment proxy is hard-wired to container port `8000`, and the service must listen on `0.0.0.0` (not `localhost`/`127.0.0.1`). Anything else is silently broken: a `localhost` bind isn't reachable by the proxy; a non-8000 port works only with a custom `route`, and Saturn still auto-adds a redundant port-8000 route that points at nothing. For MLflow 3.x specifically, also add `--allowed-hosts '*'` and `--cors-allowed-origins '*'` so its security middleware accepts proxied requests.
+- **Resources that need to call other Saturn services need an un-scoped `token_scope`.** Default `token_scope` auto-populates to a narrow value like `workspace:{self}:dask:write` — enough for Dask, not enough to call other deployments or hit the Saturn API. Set `token_scope` explicitly to the un-scoped value when a resource needs to reach beyond itself.
 
-Possible `status` values: `"pending"`, `"running"`, `"stopping"`, `"stopped"`, `"error"`.

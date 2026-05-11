@@ -94,6 +94,50 @@ Instance types are strings like `"large"`, `"xlarge"`, `"2xlarge"`, `"4xlarge"`,
 "command": "python train.py --epochs 100"
 ```
 
+#### Command pitfalls — read before applying any job/deployment
+
+**1. The command runs via `exec`, not a shell.** Builtins (`cd`), operators (`&&`, `||`, `|`), redirects (`>`), and env-var expansion (`$VAR`) all fail with errors like `exec: cd: not found`. Use `working_directory` to set the cwd. If you genuinely need shell features, wrap with `bash -lc "..."`.
+
+**2. Deployments must bind `0.0.0.0:8000`.** Saturn Cloud's deployment proxy is hard-wired to container port **8000**, and the service must listen on **`0.0.0.0`** (not `localhost`/`127.0.0.1`) so the proxy can reach it. Apply this everywhere you can:
+   - For uvicorn: `python3 -m uvicorn app:app --host 0.0.0.0 --port 8000`
+   - For mlflow ui/server: `mlflow ui --host 0.0.0.0 --port 8000 --allowed-hosts '*' --cors-allowed-origins '*'` (MLflow 3.x adds a security middleware that blocks non-localhost `Host` headers by default — `--allowed-hosts` is required to accept proxied requests)
+   - For any other server: pass the equivalent host/port flags
+
+   If you forget either: a service bound to `localhost` listens but the proxy can't connect; a service on a non-8000 port works only if you add a custom `route` matching that port, and even then Saturn auto-adds a redundant 8000 route that points at nothing.
+
+**3. Verify the command, `working_directory`, and `git_repositories[].path` line up before applying.** This is the most common silent failure: the script the command points at isn't where it ends up on disk after the clone.
+
+**4. Resources that need to call other Saturn services need an un-scoped `token_scope`.** By default Saturn auto-populates `token_scope` with a narrow value like `workspace:{self}:dask:write` — enough to talk to an attached Dask cluster, but **not** enough to call other deployments, list resources, or hit the Saturn API. If a workspace/job/deployment needs to reach out to another Saturn-managed service (e.g. a notebook calling a deployment endpoint, a job introspecting other resources), set `token_scope` explicitly to an un-scoped value. Forgetting this gets you 401/403s from the proxy that look like an auth bug but are actually scope.
+
+Mental model: at job start, Saturn does (roughly) `git clone <url> <path>` for each entry in `git_repositories`, then `cd $working_directory && exec $command`. So before applying a recipe, walk through this checklist:
+
+- Identify the script in the command (the arg after `python|python3|bash|sh|node|Rscript`).
+- If it's a relative path: resolve it as `${working_directory}/${script}`. That path must exist inside one of the `git_repositories[].path` trees, with the script's location relative to the repo root preserved.
+- If it's an absolute path: it must be under one of the `git_repositories[].path` trees.
+- The git repo's `reference` (branch/tag/commit) must actually contain that file at that location — `git ls-tree` it on the user's local checkout if you're unsure.
+
+**Concrete example.** Repo `saturncloud/examples` has `examples/data-science-analystics/cpu-data-versioning/ingest_taxi_dvc.py`. Two equivalent valid recipes:
+
+```yaml
+# A: working_directory at the script's parent, simple command
+working_directory: /home/jovyan/workspace/examples/examples/data-science-analystics/cpu-data-versioning
+command: python ingest_taxi_dvc.py
+git_repositories:
+  - url: git@github.com:saturncloud/examples.git
+    path: /home/jovyan/workspace/examples
+    reference: demo/saturn-data-pipeline
+
+# B: working_directory at the repo root, relative path in command
+working_directory: /home/jovyan/workspace/examples
+command: python examples/data-science-analystics/cpu-data-versioning/ingest_taxi_dvc.py
+git_repositories:
+  - url: git@github.com:saturncloud/examples.git
+    path: /home/jovyan/workspace/examples
+    reference: demo/saturn-data-pipeline
+```
+
+Both resolve to the same script. The wrong recipe would be one where (e.g.) the command uses `python data-versioning/ingest.py` while `working_directory` is `/home/jovyan/workspace` and the clone path is `/home/jovyan/workspace/examples` — the path math doesn't reach the file.
+
 ### Dask Cluster (attached distributed compute)
 ```json
 "dask_cluster": {

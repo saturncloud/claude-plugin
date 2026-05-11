@@ -4,6 +4,7 @@ import json
 from typing import Any, Dict, List, Optional
 
 from fastmcp import FastMCP
+from saturn_client.core import ServerOptionTypes
 
 from saturn_mcp.connection import get_connection, resolve_resource_id
 
@@ -33,6 +34,23 @@ def saturn_list_resources(
         status=status,
     )
     return json.dumps(results, indent=2)
+
+
+@mcp.tool()
+def saturn_list_instance_types(glob: Optional[str] = None) -> str:
+    """List available compute instance types (sizes) for the Saturn Cloud installation.
+
+    Hits /api/info/servers and returns the sizes catalog, sorted by (gpu, cores).
+
+    Args:
+        glob: Optional glob pattern to filter by name (e.g. 'nebius-cpu-*').
+
+    Returns:
+        JSON array of size dicts with at least name, cores, gpu, memory.
+    """
+    conn = get_connection()
+    sizes = conn.list_options(ServerOptionTypes.SIZES, glob=glob)
+    return json.dumps(list(sizes), indent=2)
 
 
 @mcp.tool()

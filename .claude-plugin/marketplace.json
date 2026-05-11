@@ -1,0 +1,13 @@
+{
+  "name": "saturn-local",
+  "owner": {
+    "name": "Saturn Cloud"
+  },
+  "plugins": [
+    {
+      "name": "saturn-cloud",
+      "source": ".",
+      "description": "Saturn Cloud plugin for Claude Code (skills + MCP server)"
+    }
+  ]
+}

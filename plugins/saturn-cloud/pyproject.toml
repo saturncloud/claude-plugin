@@ -13,5 +13,8 @@ dependencies = [
     "saturn-client",
 ]
 
+[project.scripts]
+saturn-mcp = "saturn_mcp.server:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/saturn_mcp"]

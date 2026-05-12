@@ -204,5 +204,9 @@ def saturn_schedule_job(
     return f"Scheduled job '{job_name}' with cron: {schedule_info}"
 
 
-if __name__ == "__main__":
+def main():
     mcp.run()
+
+
+if __name__ == "__main__":
+    main()

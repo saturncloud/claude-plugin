@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "saturn": {
-      "command": "${CLAUDE_PLUGIN_ROOT}/.venv/bin/python",
-      "args": ["-m", "saturn_mcp.server"],
+      "command": "uvx",
+      "args": ["--from", "${CLAUDE_PLUGIN_ROOT}", "saturn-mcp"],
       "env": {
         "SATURN_BASE_URL": "${SATURN_BASE_URL}",
         "SATURN_TOKEN": "${SATURN_TOKEN}"

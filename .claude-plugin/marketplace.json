@@ -6,7 +6,7 @@
   "plugins": [
     {
       "name": "saturn-cloud",
-      "source": ".",
+      "source": "./plugins/saturn-cloud",
       "description": "Saturn Cloud plugin for Claude Code (skills + MCP server)"
     }
   ]

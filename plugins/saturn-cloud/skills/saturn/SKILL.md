@@ -61,7 +61,7 @@ Instance types are strings like `"large"`, `"xlarge"`, `"2xlarge"`, `"4xlarge"`,
 ```json
 "git_repositories": [
   {
-    "url": "https://github.com/org/repo.git",
+    "url": "git@github.com:org/repo.git",
     "path": "/home/jovyan/workspace/repo",
     "reference": "main",
     "reference_type": "branch",
@@ -69,6 +69,8 @@ Instance types are strings like `"large"`, `"xlarge"`, `"2xlarge"`, `"4xlarge"`,
   }
 ]
 ```
+
+**Always use SSH URLs (`git@github.com:org/repo.git`), not HTTPS.** Saturn Cloud authenticates to git hosts using the user's SSH keys — HTTPS URLs will fail to clone private repos because there's no PAT/credential flow wired up. This applies across the platform: workspaces, jobs, and deployments.
 
 ### Secrets (Environment Variables)
 ```json

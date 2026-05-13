@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "saturn-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Saturn Cloud MCP server for Claude Code"
 requires-python = ">=3.10"
 dependencies = [

@@ -8,7 +8,9 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from fastmcp import FastMCP
+from saturn_api.api.deployments_api import DeploymentsApi
 from saturn_api.api.ssh_public_keys_api import SshPublicKeysApi
+from saturn_api.api.workspaces_api import WorkspacesApi
 from saturn_api.models.ssh_public_key_create import SSHPublicKeyCreate
 from saturn_client.core import ServerOptionTypes
 
@@ -343,6 +345,56 @@ async def saturn_ssh_setup(identity: Optional[str] = None) -> str:
         )
 
     return "\n".join(actions)
+
+
+@mcp.tool()
+async def saturn_get_ssh_url(
+    resource_type: str,
+    resource_name: str,
+    owner_name: Optional[str] = None,
+) -> str:
+    """Get the SSH URL of a running workspace or deployment.
+
+    The SSH URL is server-populated once the resource is running with
+    `start_ssh: true`. Use it as the target for SSH dispatch:
+        ssh -i ~/.ssh/id_ed25519_saturn <ssh_url>
+
+    Args:
+        resource_type: 'workspace' or 'deployment'.
+        resource_name: Name of the resource.
+        owner_name: Owner (user or group) name. Required if the resource
+            belongs to a user or group other than the current API token's
+            user.
+
+    Returns:
+        The ssh_url string, or an error message if the resource isn't
+        running or `start_ssh` isn't enabled.
+    """
+    client = get_api_client()
+    rt = resource_type.lower()
+    if rt == "workspace":
+        api = WorkspacesApi(client)
+        result = await api.list(owner_name=owner_name, name=resource_name)
+        items = result.workspaces
+    elif rt == "deployment":
+        api = DeploymentsApi(client)
+        result = await api.list(owner_name=owner_name, name=resource_name)
+        items = result.deployments
+    else:
+        raise ValueError(f"resource_type must be 'workspace' or 'deployment', got {resource_type!r}")
+
+    match = next((r for r in items if r.name == resource_name), None)
+    if match is None:
+        return f"No {rt} named {resource_name!r} found" + (f" for owner {owner_name!r}" if owner_name else "")
+
+    ssh_url = getattr(match, "ssh_url", None)
+    if not ssh_url:
+        return (
+            f"{rt} {resource_name!r} has no ssh_url "
+            f"(status: {getattr(match, 'status', '?')}, "
+            f"start_ssh: {getattr(match, 'start_ssh', '?')})"
+        )
+    return ssh_url
 
 
 def main():

@@ -72,12 +72,21 @@ Instance types are strings like `"large"`, `"xlarge"`, `"2xlarge"`, `"4xlarge"`,
 
 **Always use SSH URLs (`git@github.com:org/repo.git`), not HTTPS.** Saturn Cloud authenticates to git hosts using the user's SSH keys — HTTPS URLs will fail to clone private repos because there's no PAT/credential flow wired up. This applies across the platform: workspaces, jobs, and deployments.
 
-### Secrets (Environment Variables)
+### Environment Variables
+
+**Prefer `environment_variables` in the recipe over exporting in `start_script`.** Variables set this way are available to *every* process in the container (Jupyter kernels, SSH login shells, the start script itself, any service the user launches later). Exporting in `start_script` only affects the start_script's own shell — child processes the user spawns later won't see them.
+
+Shape is a flat dict `{name: value}`, not an array:
 ```json
-"environment_variables": [
-  {"variable": "MY_SECRET", "secret_name": "my-secret"}
-]
+"environment_variables": {
+  "API_BASE_URL": "https://api.example.com",
+  "LOG_LEVEL": "info"
+}
 ```
+
+**Exception: use `start_script` when the value depends on shell expansion.** `environment_variables` values are stored literally — there is no envsubst, no `$HOME` interpolation, no command substitution. If you need to compute a value at start (e.g. `export FOO="$(hostname)-worker"` or `export PYTHONPATH="$HOME/extra:$PYTHONPATH"`), put it in `start_script` and also append it to `~/.profile` / `~/.bashrc` so interactive shells inherit it.
+
+For secrets stored in Saturn's secret store, use the `secrets` field (see [recipe-reference.md](recipe-reference.md)), which mounts secret values as env vars without ever putting plaintext in the recipe.
 
 ### Extra Packages (pip)
 ```json

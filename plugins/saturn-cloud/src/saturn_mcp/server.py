@@ -298,12 +298,13 @@ async def saturn_ssh_setup(identity: Optional[str] = None) -> str:
         Plain-text summary describing what was done.
     """
     key_path = DEFAULT_SATURN_KEY_PATH
-    pub_path = key_path.with_suffix(key_path.suffix + ".pub") if key_path.suffix else Path(str(key_path) + ".pub")
+    pub_path = Path(str(key_path) + ".pub")
     actions: List[str] = []
 
     if not key_path.exists():
-        key_path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        subprocess.run(
+        ssh_dir = key_path.parent
+        ssh_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        result = subprocess.run(
             [
                 "ssh-keygen",
                 "-t", "ed25519",
@@ -311,9 +312,14 @@ async def saturn_ssh_setup(identity: Optional[str] = None) -> str:
                 "-C", f"saturn-cloud-{socket.gethostname()}",
                 "-f", str(key_path),
             ],
-            check=True,
             capture_output=True,
+            text=True,
         )
+        if result.returncode != 0:
+            raise RuntimeError(
+                f"ssh-keygen failed (exit {result.returncode}): "
+                f"{(result.stderr or result.stdout).strip()}"
+            )
         actions.append(f"generated new keypair at {key_path}")
     else:
         actions.append(f"reusing existing keypair at {key_path}")

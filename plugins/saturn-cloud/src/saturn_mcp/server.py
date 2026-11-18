@@ -5,18 +5,27 @@ import os
 import socket
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Awaitable, Dict, List, Optional, TypeVar
 
 from fastmcp import FastMCP
 from saturn_api.api.deployments_api import DeploymentsApi
 from saturn_api.api.ssh_public_keys_api import SshPublicKeysApi
 from saturn_api.api.workspaces_api import WorkspacesApi
+from saturn_api.exceptions import ApiException
 from saturn_api.models.ssh_public_key_create import SSHPublicKeyCreate
 from saturn_client.core import ServerOptionTypes
 
-from saturn_mcp.connection import get_api_client, get_connection, resolve_resource_id
+from saturn_mcp.connection import (
+    USER_TOKEN_ENV,
+    get_api_client,
+    get_connection,
+    get_user_api_client,
+    resolve_resource_id,
+)
 
 mcp = FastMCP("saturn")
+
+T = TypeVar("T")
 
 
 @mcp.tool()
@@ -235,8 +244,34 @@ def saturn_schedule_job(
 DEFAULT_SATURN_KEY_PATH = Path.home() / ".ssh" / "id_ed25519_saturn"
 
 
+# Atlas answers 403 with this error_code when a workspace, job, deployment
+# or Dask cluster token calls a route that needs a user (saturncloud/saturn#7271).
+RESOURCE_TOKEN_NOT_ALLOWED = "TokenErrors.RESOURCE_TOKEN_NOT_ALLOWED"
+
+RESOURCE_TOKEN_HELP = (
+    "Inside a Saturn resource, SSH key tools need a user API token. The "
+    "SATURN_TOKEN that a workspace, job or deployment gets cannot manage SSH "
+    "keys. Create a user API token in Saturn Cloud (click your name in the "
+    "sidebar, then Access Keys, then API Tokens), set it as "
+    f"{USER_TOKEN_ENV} in the environment Claude Code starts from, and "
+    "restart Claude Code. Setting SATURN_TOKEN to the user token also works, "
+    "but then every plugin tool acts as you rather than as the resource."
+)
+
+
 def _ssh_key_api() -> SshPublicKeysApi:
-    return SshPublicKeysApi(get_api_client())
+    return SshPublicKeysApi(get_user_api_client())
+
+
+async def _ssh_key_call(call: Awaitable[T]) -> T:
+    """Await an SSH key API call, replacing Atlas's resource-token 403
+    with instructions for the user."""
+    try:
+        return await call
+    except ApiException as err:
+        if err.status == 403 and RESOURCE_TOKEN_NOT_ALLOWED in (err.body or ""):
+            raise RuntimeError(RESOURCE_TOKEN_HELP) from err
+        raise
 
 
 @mcp.tool()
@@ -250,7 +285,7 @@ async def saturn_ssh_key_list(identity: Optional[str] = None) -> str:
     Returns:
         JSON array of {id, name, identity, created_at}.
     """
-    result = await _ssh_key_api().list(identity=identity)
+    result = await _ssh_key_call(_ssh_key_api().list(identity=identity))
     return json.dumps([k.to_dict() for k in result.ssh_public_keys], indent=2, default=str)
 
 
@@ -272,14 +307,14 @@ async def saturn_ssh_key_register(
         JSON of the created key: {id, name, identity, created_at}.
     """
     body = SSHPublicKeyCreate(name=name, value=public_key.strip(), identity=identity)
-    created = await _ssh_key_api().create(ssh_public_key_create=body)
+    created = await _ssh_key_call(_ssh_key_api().create(ssh_public_key_create=body))
     return json.dumps(created.to_dict(), indent=2, default=str)
 
 
 @mcp.tool()
 async def saturn_ssh_key_delete(key_id: str) -> str:
     """Delete an SSH public key from Saturn Cloud by ID."""
-    await _ssh_key_api().delete(ssh_publickey_id=key_id)
+    await _ssh_key_call(_ssh_key_api().delete(ssh_publickey_id=key_id))
     return f"Deleted SSH public key '{key_id}'"
 
 
@@ -330,14 +365,14 @@ async def saturn_ssh_setup(identity: Optional[str] = None) -> str:
     key_name = f"claude-code-{socket.gethostname()}"
 
     api = _ssh_key_api()
-    existing = await api.list(identity=identity, name=key_name)
+    existing = await _ssh_key_call(api.list(identity=identity, name=key_name))
     matching = [k for k in existing.ssh_public_keys if k.name == key_name]
 
     if matching:
         actions.append(f"key '{key_name}' already registered (id={matching[0].id})")
     else:
         body = SSHPublicKeyCreate(name=key_name, value=public_key, identity=identity)
-        created = await api.create(ssh_public_key_create=body)
+        created = await _ssh_key_call(api.create(ssh_public_key_create=body))
         actions.append(
             f"registered '{key_name}' with Saturn"
             + (f" under identity '{identity}'" if identity else "")

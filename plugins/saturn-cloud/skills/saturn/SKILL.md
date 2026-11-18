@@ -169,6 +169,11 @@ Both resolve to the same script. The wrong recipe would be one where (e.g.) the 
 ### Cron Scheduling (Jobs)
 Use `saturn_schedule_job` to set a cron schedule: `saturn_schedule_job(job_name="nightly-etl", cron_schedule="0 2 * * *")`.
 
+### SSH Access
+Use `saturn_ssh_setup` to create a local keypair at `~/.ssh/id_ed25519_saturn` and register it, then `saturn_get_ssh_url` for the target (the resource needs `start_ssh: true` and must be running).
+
+**Inside a Saturn workspace, job or deployment, the SSH key tools need a user API token.** There, `SATURN_TOKEN` is the resource's own token, and Saturn Cloud refuses it on the SSH key and secrets APIs with 403 `TokenErrors.RESOURCE_TOKEN_NOT_ALLOWED`. No `token_scope` changes this. If an SSH key tool fails with that message, tell the user to create a user API token (click their name in the sidebar, then Access Keys, then API Tokens), export it as `SATURN_USER_TOKEN`, and restart Claude Code. Do not try to work around it with the resource token or by calling the API directly.
+
 ## Tips
 
 - Use `as_template=true` when getting a resource you want to clone or modify — it strips the state and IDs.

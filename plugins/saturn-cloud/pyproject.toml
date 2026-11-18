@@ -8,9 +8,14 @@ version = "0.1.0"
 description = "Saturn Cloud MCP server for Claude Code"
 requires-python = ">=3.10"
 dependencies = [
-    "mcp",
+    "mcp>=1.30.0",
     "fastmcp",
     "saturn-client",
+    # Not imported directly; floors above releases with JWS/JWT advisories
+    # (authlib < 1.9.1, pyjwt < 2.14.0). uvx --from ignores uv.lock, so floors
+    # that must hold on users' machines live here.
+    "authlib>=1.9.1",
+    "pyjwt>=2.14.0",
 ]
 
 [project.scripts]
@@ -18,3 +23,9 @@ saturn-mcp = "saturn_mcp.server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/saturn_mcp"]
+
+[tool.uv]
+# Dependency cooldown for `uv sync` / `uv lock` in development. Users launch the
+# server with `uvx --from`, which ignores this table; .mcp.json passes the same
+# --exclude-newer flag for them.
+exclude-newer = "7 days"

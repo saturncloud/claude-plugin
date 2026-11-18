@@ -4,13 +4,14 @@ build-backend = "hatchling.build"
 
 [project]
 name = "saturn-mcp"
-version = "0.1.0"
+version = "0.2.0"
 description = "Saturn Cloud MCP server for Claude Code"
 requires-python = ">=3.10"
 dependencies = [
     "mcp>=1.30.0",
     "fastmcp",
     "saturn-client",
+    "saturn-api>=1.0.0",
     # Not imported directly; floors above releases with JWS/JWT advisories
     # (authlib < 1.9.1, pyjwt < 2.14.0). uvx --from ignores uv.lock, so floors
     # that must hold on users' machines live here.

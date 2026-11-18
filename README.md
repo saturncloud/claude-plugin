@@ -30,9 +30,13 @@ The MCP server reads two environment variables (see `.mcp.json`):
 | Variable | Description |
 |----------|-------------|
 | `SATURN_BASE_URL` | Your Saturn Cloud installation URL (e.g. `https://app.community.saturnenterprise.io`) |
-| `SATURN_TOKEN` | API token from **Settings → API Tokens** in Saturn Cloud |
+| `SATURN_TOKEN` | A user API token. Create one in Saturn Cloud: click your name in the sidebar, then **Access Keys**, then **API Tokens**. |
 
 Set these in your shell before launching Claude Code, or in your Claude Code MCP config.
+
+### Running inside a Saturn workspace, job or deployment
+
+Saturn sets `SATURN_BASE_URL` and `SATURN_TOKEN` in every resource, so the plugin works there without setup. That `SATURN_TOKEN` is the resource's own token, and Saturn Cloud refuses it on the SSH key APIs, so the SSH key tools (`saturn_ssh_setup`, `saturn_ssh_key_list`, `saturn_ssh_key_register`, `saturn_ssh_key_delete`) fail there with a message saying so. Run SSH key setup from your own machine. If you need it inside a resource, setting `SATURN_TOKEN` to a user API token is your choice to make, and it makes every tool act as you.
 
 ## What's in this repo
 
@@ -58,6 +62,9 @@ Once installed, Claude can call:
 - `saturn_schedule_job` — set a cron schedule on a job
 - `saturn_get_logs` — fetch logs for a resource
 - `saturn_list_instance_types` — list available compute sizes
+- `saturn_ssh_setup` — create a local SSH keypair and register it with Saturn Cloud
+- `saturn_ssh_key_list` / `saturn_ssh_key_register` / `saturn_ssh_key_delete` — manage registered SSH public keys
+- `saturn_get_ssh_url` — get the SSH URL of a running workspace or deployment
 
 ## Updating the recipe reference
 

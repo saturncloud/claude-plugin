@@ -61,7 +61,7 @@ Instance types are strings like `"large"`, `"xlarge"`, `"2xlarge"`, `"4xlarge"`,
 ```json
 "git_repositories": [
   {
-    "url": "https://github.com/org/repo.git",
+    "url": "git@github.com:org/repo.git",
     "path": "/home/jovyan/workspace/repo",
     "reference": "main",
     "reference_type": "branch",
@@ -70,12 +70,23 @@ Instance types are strings like `"large"`, `"xlarge"`, `"2xlarge"`, `"4xlarge"`,
 ]
 ```
 
-### Secrets (Environment Variables)
+**Always use SSH URLs (`git@github.com:org/repo.git`), not HTTPS.** Saturn Cloud authenticates to git hosts using the user's SSH keys — HTTPS URLs will fail to clone private repos because there's no PAT/credential flow wired up. This applies across the platform: workspaces, jobs, and deployments.
+
+### Environment Variables
+
+**Prefer `environment_variables` in the recipe over exporting in `start_script`.** Variables set this way are available to *every* process in the container (Jupyter kernels, SSH login shells, the start script itself, any service the user launches later). Exporting in `start_script` only affects the start_script's own shell — child processes the user spawns later won't see them.
+
+Shape is a flat dict `{name: value}`, not an array:
 ```json
-"environment_variables": [
-  {"variable": "MY_SECRET", "secret_name": "my-secret"}
-]
+"environment_variables": {
+  "API_BASE_URL": "https://api.example.com",
+  "LOG_LEVEL": "info"
+}
 ```
+
+**Exception: use `start_script` when the value depends on shell expansion.** `environment_variables` values are stored literally — there is no envsubst, no `$HOME` interpolation, no command substitution. If you need to compute a value at start (e.g. `export FOO="$(hostname)-worker"` or `export PYTHONPATH="$HOME/extra:$PYTHONPATH"`), put it in `start_script` and also append it to `~/.profile` / `~/.bashrc` so interactive shells inherit it.
+
+For secrets stored in Saturn's secret store, use the `secrets` field (see [recipe-reference.md](recipe-reference.md)), which mounts secret values as env vars without ever putting plaintext in the recipe.
 
 ### Extra Packages (pip)
 ```json
@@ -157,6 +168,11 @@ Both resolve to the same script. The wrong recipe would be one where (e.g.) the 
 
 ### Cron Scheduling (Jobs)
 Use `saturn_schedule_job` to set a cron schedule: `saturn_schedule_job(job_name="nightly-etl", cron_schedule="0 2 * * *")`.
+
+### SSH Access
+Use `saturn_ssh_setup` to create a local keypair at `~/.ssh/id_ed25519_saturn` and register it, then `saturn_get_ssh_url` for the target (the resource needs `start_ssh: true` and must be running).
+
+**Inside a Saturn workspace, job or deployment, the SSH key tools do not work.** There, `SATURN_TOKEN` is the resource's own token, and Saturn Cloud refuses it on the SSH key APIs with 403 `TokenErrors.RESOURCE_TOKEN_NOT_ALLOWED`. When an SSH key tool fails with that message, relay the message to the user as it is. Do not try to work around it, for example by calling the API directly or changing `token_scope`. Do not suggest changing tokens unless the user asks how to do SSH key setup from inside the resource.
 
 ## Tips
 

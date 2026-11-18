@@ -2,7 +2,7 @@
   "mcpServers": {
     "saturn": {
       "command": "uvx",
-      "args": ["--from", "${CLAUDE_PLUGIN_ROOT}", "saturn-mcp"],
+      "args": ["--exclude-newer", "7 days", "--from", "${CLAUDE_PLUGIN_ROOT}", "saturn-mcp"],
       "env": {
         "SATURN_BASE_URL": "${SATURN_BASE_URL}",
         "SATURN_TOKEN": "${SATURN_TOKEN}"

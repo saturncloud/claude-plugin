@@ -16,11 +16,12 @@ The plugin is published in the local marketplace defined by `.claude-plugin/mark
 /plugin install saturn-cloud@saturn-local
 ```
 
-The MCP server runs out of `.venv`, so create it first:
+Claude Code starts the MCP server with `uvx` (see `.mcp.json`), which needs
+[uv](https://docs.astral.sh/uv/) 0.9.17 or later. The launch only takes package
+releases that are at least 7 days old (`--exclude-newer "7 days"`), so a release
+that is hijacked and pulled within days never reaches your machine.
 
-```sh
-uv sync
-```
+For development, `uv sync` creates `.venv` with the same 7-day cooldown.
 
 ## Configure
 

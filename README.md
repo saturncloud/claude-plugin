@@ -24,21 +24,18 @@ uv sync
 
 ## Configure
 
-The MCP server reads these environment variables (see `.mcp.json`):
+The MCP server reads two environment variables (see `.mcp.json`):
 
 | Variable | Description |
 |----------|-------------|
 | `SATURN_BASE_URL` | Your Saturn Cloud installation URL (e.g. `https://app.community.saturnenterprise.io`) |
 | `SATURN_TOKEN` | A user API token. Create one in Saturn Cloud: click your name in the sidebar, then **Access Keys**, then **API Tokens**. |
-| `SATURN_USER_TOKEN` | Optional. A user API token for the SSH key tools only. Set it when running inside a Saturn resource (see below). |
 
 Set these in your shell before launching Claude Code, or in your Claude Code MCP config.
 
 ### Running inside a Saturn workspace, job or deployment
 
-Saturn sets `SATURN_BASE_URL` and `SATURN_TOKEN` in every resource, so the plugin works there without setup. That `SATURN_TOKEN` is the resource's own token, though, and Saturn Cloud refuses it on the SSH key and secrets APIs. A resource token must not be able to create a credential that outlives the resource.
-
-So inside a resource the SSH key tools (`saturn_ssh_setup`, `saturn_ssh_key_list`, `saturn_ssh_key_register`, `saturn_ssh_key_delete`) need a user API token. Create one as described above and export it as `SATURN_USER_TOKEN` before starting Claude Code. The SSH key tools use it, and the other tools keep using the resource's `SATURN_TOKEN`. Without it, the SSH key tools fail with a message that says what to do. You can instead set `SATURN_TOKEN` itself to the user token, but then every tool acts as you rather than as the resource.
+Saturn sets `SATURN_BASE_URL` and `SATURN_TOKEN` in every resource, so the plugin works there without setup. That `SATURN_TOKEN` is the resource's own token, and Saturn Cloud refuses it on the SSH key APIs, so the SSH key tools (`saturn_ssh_setup`, `saturn_ssh_key_list`, `saturn_ssh_key_register`, `saturn_ssh_key_delete`) fail there with a message saying so. Run SSH key setup from your own machine. If you need it inside a resource, setting `SATURN_TOKEN` to a user API token is your choice to make, and it makes every tool act as you.
 
 ## What's in this repo
 

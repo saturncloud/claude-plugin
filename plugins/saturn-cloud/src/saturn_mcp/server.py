@@ -15,13 +15,7 @@ from saturn_api.exceptions import ApiException
 from saturn_api.models.ssh_public_key_create import SSHPublicKeyCreate
 from saturn_client.core import ServerOptionTypes
 
-from saturn_mcp.connection import (
-    USER_TOKEN_ENV,
-    get_api_client,
-    get_connection,
-    get_user_api_client,
-    resolve_resource_id,
-)
+from saturn_mcp.connection import get_api_client, get_connection, resolve_resource_id
 
 mcp = FastMCP("saturn")
 
@@ -249,18 +243,16 @@ DEFAULT_SATURN_KEY_PATH = Path.home() / ".ssh" / "id_ed25519_saturn"
 RESOURCE_TOKEN_NOT_ALLOWED = "TokenErrors.RESOURCE_TOKEN_NOT_ALLOWED"
 
 RESOURCE_TOKEN_HELP = (
-    "Inside a Saturn resource, SSH key tools need a user API token. The "
+    "SSH key setup is not available with a Saturn resource's token. The "
     "SATURN_TOKEN that a workspace, job or deployment gets cannot manage SSH "
-    "keys. Create a user API token in Saturn Cloud (click your name in the "
-    "sidebar, then Access Keys, then API Tokens), set it as "
-    f"{USER_TOKEN_ENV} in the environment Claude Code starts from, and "
-    "restart Claude Code. Setting SATURN_TOKEN to the user token also works, "
-    "but then every plugin tool acts as you rather than as the resource."
+    "keys. Run SSH key setup from your own machine instead. Or set "
+    "SATURN_TOKEN to a user API token yourself, which makes every Saturn "
+    "tool act as you rather than as this resource."
 )
 
 
 def _ssh_key_api() -> SshPublicKeysApi:
-    return SshPublicKeysApi(get_user_api_client())
+    return SshPublicKeysApi(get_api_client())
 
 
 async def _ssh_key_call(call: Awaitable[T]) -> T:

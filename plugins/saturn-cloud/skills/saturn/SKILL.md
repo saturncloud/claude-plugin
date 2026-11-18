@@ -172,7 +172,7 @@ Use `saturn_schedule_job` to set a cron schedule: `saturn_schedule_job(job_name=
 ### SSH Access
 Use `saturn_ssh_setup` to create a local keypair at `~/.ssh/id_ed25519_saturn` and register it, then `saturn_get_ssh_url` for the target (the resource needs `start_ssh: true` and must be running).
 
-**Inside a Saturn workspace, job or deployment, the SSH key tools need a user API token.** There, `SATURN_TOKEN` is the resource's own token, and Saturn Cloud refuses it on the SSH key and secrets APIs with 403 `TokenErrors.RESOURCE_TOKEN_NOT_ALLOWED`. No `token_scope` changes this. If an SSH key tool fails with that message, tell the user to create a user API token (click their name in the sidebar, then Access Keys, then API Tokens), export it as `SATURN_USER_TOKEN`, and restart Claude Code. Do not try to work around it with the resource token or by calling the API directly.
+**Inside a Saturn workspace, job or deployment, the SSH key tools do not work.** There, `SATURN_TOKEN` is the resource's own token, and Saturn Cloud refuses it on the SSH key APIs with 403 `TokenErrors.RESOURCE_TOKEN_NOT_ALLOWED`. When an SSH key tool fails with that message, relay the message to the user as it is. Do not try to work around it, for example by calling the API directly or changing `token_scope`. Do not suggest changing tokens unless the user asks how to do SSH key setup from inside the resource.
 
 ## Tips
 

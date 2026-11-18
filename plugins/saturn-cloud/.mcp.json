@@ -5,8 +5,7 @@
       "args": ["--from", "${CLAUDE_PLUGIN_ROOT}", "saturn-mcp"],
       "env": {
         "SATURN_BASE_URL": "${SATURN_BASE_URL}",
-        "SATURN_TOKEN": "${SATURN_TOKEN}",
-        "SATURN_USER_TOKEN": "${SATURN_USER_TOKEN:-}"
+        "SATURN_TOKEN": "${SATURN_TOKEN}"
       }
     }
   }

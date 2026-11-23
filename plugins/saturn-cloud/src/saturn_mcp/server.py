@@ -65,6 +65,27 @@ def saturn_list_instance_types(glob: Optional[str] = None) -> str:
 
 
 @mcp.tool()
+def saturn_list_instance_type_configs() -> str:
+    """List the recommended instance type configurations of the installation.
+
+    A configuration is an operator-defined, ordered list of instance types on
+    one cluster (for example `shadeform-rtxpro6000-1gpu`: one GPU type at
+    several sites). A recipe names one with `instance_type_config` instead of
+    `instance_type`; the resource starts at whichever listed type has stock,
+    tried in order. Prefer one on clusters where it is offered: a single site
+    waits whenever that site is sold out.
+
+    Returns:
+        JSON array of {name, display_name, description, cluster, sizes, default}.
+        Empty on installations that offer none.
+    """
+    conn = get_connection()
+    response = conn.session.get(f"{conn.url.rstrip('/')}/api/info/servers")
+    response.raise_for_status()
+    return json.dumps(response.json().get("instance_type_configs", []), indent=2)
+
+
+@mcp.tool()
 def saturn_get_resource(
     resource_type: str,
     resource_name: str,

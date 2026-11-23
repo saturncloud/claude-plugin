@@ -62,6 +62,7 @@ Once installed, Claude can call:
 - `saturn_schedule_job` — set a cron schedule on a job
 - `saturn_get_logs` — fetch logs for a resource
 - `saturn_list_instance_types` — list available compute sizes
+- `saturn_list_instance_type_configs` — list recommended instance type configurations (ordered size lists to name with `instance_type_config`)
 - `saturn_ssh_setup` — create a local SSH keypair and register it with Saturn Cloud
 - `saturn_ssh_key_list` / `saturn_ssh_key_register` / `saturn_ssh_key_delete` — manage registered SSH public keys
 - `saturn_get_ssh_url` — get the SSH URL of a running workspace or deployment

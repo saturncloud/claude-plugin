@@ -29,7 +29,8 @@ state:                         # response-only; omit when applying
 | `description` | string | No | Human-readable description |
 | `tags` | object (string → string) | No | Arbitrary labels |
 | `image` | string | Yes | Image reference, e.g. `"saturncloud/saturn-python:2025.05.01"`. **Single string, not an object.** |
-| `instance_type` | string | Yes | Full instance descriptor (e.g. `"nebius-cpu-d3-4vcpu-16gb"`). Use `saturn_list_instance_types` to enumerate. |
+| `instance_type` | string or array of strings | Yes, unless `instance_type_config` is given | Full instance descriptor (e.g. `"nebius-cpu-d3-4vcpu-16gb"`). Use `saturn_list_instance_types` to enumerate. On a resource spec it may also be an ordered list of descriptors (tried in order when one has no capacity), and it is omitted when `instance_type_config` is given. |
+| `instance_type_config` | string | No | Name of a recommended instance type configuration (e.g. `"shadeform-rtxpro6000-1gpu"`): an operator-defined, ordered list of instance types on one cluster. Use `saturn_list_instance_type_configs` to enumerate. **Give this or `instance_type`, never both.** |
 | `environment_variables` | object (string → string) | No | Plain env vars. **Dict shape, not array.** |
 | `working_directory` | string | No | Working directory inside the container |
 | `extra_packages` | [ExtraPackagesRecipe](#extrapackagesrecipe) | No | Package install instructions |
@@ -261,6 +262,7 @@ spec:
 
 - `image` is a **string**, not `{name, version}`.
 - `instance_type` is the **full descriptor**, not a size keyword (use `saturn_list_instance_types`).
+- Where the installation offers a **recommended configuration** (`saturn_list_instance_type_configs`), prefer `instance_type_config: <name>` over a single `instance_type`: it starts at whichever listed site has stock. Give one or the other, never both; a dumped recipe shows `instance_type_config` and no `instance_type`.
 - `environment_variables` is a **dict**, not a list of `{variable, value}` objects.
 - `extra_packages.pip` is an **object** `{install, requirements_txt}`, not a space-separated string.
 - `secrets` is a **separate array**, not embedded in `environment_variables`.
